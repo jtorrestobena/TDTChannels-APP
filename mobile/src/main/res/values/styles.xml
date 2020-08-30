@@ -18,12 +18,9 @@
 
     <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
 
+    <!-- The Theme used in the app differs from the one used in
+            VideoDialogFragment (Theme_Black_NoTitleBar_Fullscreen) -->
     <style name="CustomMediaRouterTheme" parent="Theme.MediaRouter">
-        <item name="mediaRouteButtonStyle">@style/CustomMediaRouteButtonStyle</item>
+        <item name="mediaRouteButtonStyle">@style/Widget.MediaRouter.MediaRouteButton</item>
     </style>
-
-    <style name="CustomMediaRouteButtonStyle" parent="Widget.MediaRouter.Light.MediaRouteButton">
-        <item name="mediaRouteButtonTint">#FFFFFF</item>
-    </style>
-
 </resources>

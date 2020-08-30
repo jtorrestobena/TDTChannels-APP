@@ -16,18 +16,25 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.ImageRequest;
+import com.google.android.exoplayer2.ext.cast.CastPlayer;
+import com.google.android.exoplayer2.ext.cast.SessionAvailabilityListener;
+import com.google.android.exoplayer2.util.MimeTypes;
+import com.google.android.gms.cast.MediaInfo;
+import com.google.android.gms.cast.MediaMetadata;
+import com.google.android.gms.cast.MediaQueueItem;
+import com.google.android.gms.cast.framework.CastButtonFactory;
+import com.google.android.gms.cast.framework.CastContext;
+
+import java.util.ArrayList;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
-
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.ImageRequest;
-
-import java.util.ArrayList;
-
 import laquay.com.open.canalestdt.component.ChannelList;
 import laquay.com.open.canalestdt.controller.VolleyController;
 import laquay.com.open.canalestdt.model.Channel;
@@ -49,6 +56,8 @@ public class DetailChannelActivity extends AppCompatActivity {
     private TextView channelURLTV;
     private ListView channelSourceLV;
     private MediaPlayer mediaPlayer; //TODO This should be moved to another Dialog/Fragment
+    private CastPlayer castPlayer;
+    private MenuItem castItem;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -160,6 +169,7 @@ public class DetailChannelActivity extends AppCompatActivity {
         Toast.makeText(this, getString(R.string.channel_detail_reproducing_radio), Toast.LENGTH_SHORT).show();
         mediaPlayer = MediaPlayer.create(this, Uri.parse(streamURL));
         mediaPlayer.start();
+        setupCasting(streamURL);
     }
 
     @Override
@@ -168,6 +178,13 @@ public class DetailChannelActivity extends AppCompatActivity {
 
         if (mediaPlayer != null) {
             mediaPlayer.stop();
+        }
+
+        if (castPlayer != null) {
+            castPlayer.setSessionAvailabilityListener(null);
+            if (castPlayer.isLoading() || castPlayer.isPlaying()) {
+                castPlayer.stop(true);
+            }
         }
     }
 
@@ -181,6 +198,10 @@ public class DetailChannelActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.activity_detail_channel, menu);
+
+        CastButtonFactory.setUpMediaRouteButton(getApplicationContext(), menu, R.id.media_route_menu_item);
+        castItem = menu.findItem(R.id.media_route_menu_item);
+        castItem.setVisible(false);
 
         boolean isItemFavorite;
         if (typeOfStream.equals(TYPE_TV)) {
@@ -215,5 +236,31 @@ public class DetailChannelActivity extends AppCompatActivity {
             }
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void setupCasting(final String streamURL) {
+        castPlayer = new CastPlayer(CastContext.getSharedInstance(this));
+        castPlayer.setSessionAvailabilityListener(new SessionAvailabilityListener() {
+            @Override
+            public void onCastSessionAvailable() {
+                castPlayer.loadItem(buildMediaQueueItem(streamURL), 0);
+                mediaPlayer.stop();
+            }
+
+            @Override
+            public void onCastSessionUnavailable() {
+                mediaPlayer.start();
+            }
+        });
+        castItem.setVisible(true);
+    }
+
+    private MediaQueueItem buildMediaQueueItem(String url) {
+        final MediaMetadata movieMetadata = new MediaMetadata(MediaMetadata.MEDIA_TYPE_MOVIE);
+        movieMetadata.putString(MediaMetadata.KEY_TITLE, channel.getName());
+        final MediaInfo mediaInfo = new MediaInfo.Builder(Uri.parse(url).toString())
+                .setStreamType(MediaInfo.STREAM_TYPE_BUFFERED).setContentType(MimeTypes.APPLICATION_ID3)
+                .setMetadata(movieMetadata).build();
+        return new MediaQueueItem.Builder(mediaInfo).build();
     }
 }
