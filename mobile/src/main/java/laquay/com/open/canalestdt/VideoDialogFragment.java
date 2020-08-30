@@ -8,33 +8,48 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.fragment.app.DialogFragment;
+import androidx.mediarouter.app.MediaRouteButton;
 
 import com.google.android.exoplayer2.ExoPlaybackException;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
+import com.google.android.exoplayer2.ext.cast.CastPlayer;
+import com.google.android.exoplayer2.ext.cast.SessionAvailabilityListener;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.hls.HlsMediaSource;
+import com.google.android.exoplayer2.ui.PlayerControlView;
 import com.google.android.exoplayer2.ui.PlayerView;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory;
+import com.google.android.exoplayer2.util.MimeTypes;
 import com.google.android.exoplayer2.util.Util;
+import com.google.android.gms.cast.MediaInfo;
+import com.google.android.gms.cast.MediaMetadata;
+import com.google.android.gms.cast.MediaQueueItem;
+import com.google.android.gms.cast.framework.CastButtonFactory;
+import com.google.android.gms.cast.framework.CastContext;
 
 public class VideoDialogFragment extends DialogFragment implements Player.EventListener {
     public static final String TAG = VideoDialogFragment.class.getSimpleName();
     private static final String CHANNEL_KEY = "CHANNEL_URL";
+    private static final String CHANNEL_NAME = "CHANNEL_NAME";
     private SimpleExoPlayer player;
     private PlayerView channelVideoView;
     private DefaultDataSourceFactory dataSourceFactory;
+    private CastPlayer castPlayer;
+    private TextView externalDeviceTextView;
 
-    public static VideoDialogFragment newInstance(String streamURL) {
+    public static VideoDialogFragment newInstance(String streamURL, String channelName) {
         VideoDialogFragment videoDialogFragment = new VideoDialogFragment();
 
         Bundle args = new Bundle();
         args.putString(CHANNEL_KEY, streamURL);
+        args.putString(CHANNEL_NAME, channelName);
         videoDialogFragment.setArguments(args);
 
         return videoDialogFragment;
@@ -53,6 +68,17 @@ public class VideoDialogFragment extends DialogFragment implements Player.EventL
 
         channelVideoView = rootView.findViewById(R.id.channel_video_detail_exoplayer);
 
+        externalDeviceTextView = (TextView) rootView.findViewById(R.id.external_device_message_textview);
+        final MediaRouteButton mediaRouteButton = (MediaRouteButton) rootView.findViewById(R.id.media_route_button);
+        CastButtonFactory.setUpMediaRouteButton(getContext().getApplicationContext(), mediaRouteButton);
+
+        channelVideoView.setControllerVisibilityListener(new PlayerControlView.VisibilityListener() {
+            @Override
+            public void onVisibilityChange(int visibility) {
+                mediaRouteButton.setVisibility(visibility);
+            }
+        });
+
         if (getArguments() != null) {
             String channelUrl = getArguments().getString(CHANNEL_KEY);
             if (getActivity() != null && getContext() != null && channelUrl != null) {
@@ -69,9 +95,30 @@ public class VideoDialogFragment extends DialogFragment implements Player.EventL
 
                 getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
                 loadVideo(channelUrl);
+
+                final String channelName = getArguments().getString(CHANNEL_NAME);
+                setupCasting(channelUrl, channelName);
             }
         }
         return rootView;
+    }
+
+    private void setupCasting(final String streamURL, final String channelName) {
+        castPlayer = new CastPlayer(CastContext.getSharedInstance(requireActivity()));
+        castPlayer.setSessionAvailabilityListener(new SessionAvailabilityListener() {
+            @Override
+            public void onCastSessionAvailable() {
+                player.stop(true);
+                castPlayer.loadItem(buildMediaQueueItem(streamURL, channelName), 0);
+                externalDeviceTextView.setVisibility(View.VISIBLE);
+            }
+
+            @Override
+            public void onCastSessionUnavailable() {
+                externalDeviceTextView.setVisibility(View.GONE);
+                loadVideo(streamURL);
+            }
+        });
     }
 
     public void loadVideo(String streamURL) {
@@ -87,6 +134,15 @@ public class VideoDialogFragment extends DialogFragment implements Player.EventL
         // Prepare the player with the source.
         player.prepare(videoSource);
         player.setPlayWhenReady(true);
+    }
+
+    private MediaQueueItem buildMediaQueueItem(String url, String channelName) {
+        final MediaMetadata movieMetadata = new MediaMetadata(MediaMetadata.MEDIA_TYPE_MOVIE);
+        movieMetadata.putString(MediaMetadata.KEY_TITLE, channelName);
+        final MediaInfo mediaInfo = new MediaInfo.Builder(Uri.parse(url).toString())
+                .setStreamType(MediaInfo.STREAM_TYPE_BUFFERED).setContentType(MimeTypes.APPLICATION_M3U8)
+                .setMetadata(movieMetadata).build();
+        return new MediaQueueItem.Builder(mediaInfo).build();
     }
 
     @Override
@@ -108,6 +164,8 @@ public class VideoDialogFragment extends DialogFragment implements Player.EventL
             if (player != null) {
                 player.release();
             }
+
+            castPlayer.setSessionAvailabilityListener(null);
 
             getActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         }

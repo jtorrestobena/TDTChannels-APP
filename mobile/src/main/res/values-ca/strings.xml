@@ -44,4 +44,5 @@
     <string name="download_no">Cancel·lar</string>
     <string name="download_your_version_message">La teva versió</string>
     <string name="download_latest_version_message">Ultima versió</string>
+    <string name="content_playing_external_device">El contingut s\'està reproduint en un dispositiu extern</string>
 </resources>

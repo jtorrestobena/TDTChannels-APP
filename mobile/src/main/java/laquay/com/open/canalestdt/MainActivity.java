@@ -18,6 +18,7 @@ import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
+import com.google.android.gms.cast.framework.CastContext;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import org.json.JSONException;
@@ -75,6 +76,9 @@ public class MainActivity extends AppCompatActivity {
 
         navView.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
         navView.setSelectedItemId(R.id.nav_tv_channels);
+
+        // Lazily initialize the CastContext in the MainActivity onCreate method
+        CastContext.getSharedInstance(this);
 
         checkAppVersion();
     }

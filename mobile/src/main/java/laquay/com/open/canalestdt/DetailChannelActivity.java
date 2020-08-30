@@ -152,7 +152,7 @@ public class DetailChannelActivity extends AppCompatActivity {
 
     private void loadVideo(String streamURL) {
         Toast.makeText(this, getString(R.string.channel_detail_reproducing_tv), Toast.LENGTH_SHORT).show();
-        DialogFragment newFragment = VideoDialogFragment.newInstance(streamURL);
+        DialogFragment newFragment = VideoDialogFragment.newInstance(streamURL, channel.getName());
         newFragment.show(getSupportFragmentManager(), "VideoDialog");
     }
 
