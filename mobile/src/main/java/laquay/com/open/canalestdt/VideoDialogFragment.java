@@ -11,18 +11,17 @@ import android.view.WindowManager;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.fragment.app.DialogFragment;
-import androidx.mediarouter.app.MediaRouteButton;
-
 import com.google.android.exoplayer2.ExoPlaybackException;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.ext.cast.CastPlayer;
 import com.google.android.exoplayer2.ext.cast.SessionAvailabilityListener;
 import com.google.android.exoplayer2.source.MediaSource;
+import com.google.android.exoplayer2.source.dash.DashMediaSource;
 import com.google.android.exoplayer2.source.hls.HlsMediaSource;
 import com.google.android.exoplayer2.ui.PlayerControlView;
 import com.google.android.exoplayer2.ui.PlayerView;
+import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory;
@@ -33,6 +32,9 @@ import com.google.android.gms.cast.MediaMetadata;
 import com.google.android.gms.cast.MediaQueueItem;
 import com.google.android.gms.cast.framework.CastButtonFactory;
 import com.google.android.gms.cast.framework.CastContext;
+
+import androidx.fragment.app.DialogFragment;
+import androidx.mediarouter.app.MediaRouteButton;
 
 public class VideoDialogFragment extends DialogFragment implements Player.EventListener {
     public static final String TAG = VideoDialogFragment.class.getSimpleName();
@@ -127,9 +129,17 @@ public class VideoDialogFragment extends DialogFragment implements Player.EventL
         // Add listener for onPlayerError
         player.addListener(this);
 
-        // This is the MediaSource representing the media to be played.
-        MediaSource videoSource = new HlsMediaSource.Factory(dataSourceFactory)
-                .createMediaSource(Uri.parse(streamURL));
+        MediaSource videoSource = null;
+        if (streamURL.contains("m3u8")) {
+            videoSource = new HlsMediaSource.Factory(dataSourceFactory)
+                    .createMediaSource(Uri.parse(streamURL));
+        } else {
+            DataSource.Factory dataSourceFactory =
+                    new DefaultDataSourceFactory(requireContext(), "ua");
+
+            videoSource =  new DashMediaSource.Factory(dataSourceFactory)
+                    .createMediaSource(Uri.parse(streamURL));
+        }
 
         // Prepare the player with the source.
         player.prepare(videoSource);

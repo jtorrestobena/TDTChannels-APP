@@ -152,7 +152,7 @@ public class DetailChannelActivity extends AppCompatActivity {
     }
 
     private boolean isReproducibleWithExoplayer(String url) {
-        return url.contains("m3u8");
+        return url.contains("m3u8") || url.contains("dash");
     }
 
     private boolean isReproducibleWithYoutube(String url) {
